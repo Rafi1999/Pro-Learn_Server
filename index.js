@@ -4,7 +4,6 @@ const cors = require('cors');
 const { ObjectId } = require('mongodb');
 const jwt = require('jsonwebtoken');
 require('dotenv').config()
-const stripe = require('stripe')(process.env.PAYMENT_SECRET_KEY)
 const port = process.env.PORT || 5000;
 
 // middleware
@@ -43,7 +42,6 @@ async function run() {
     // Connect the client to the server	(optional starting in v4.7)
     const usersCollection = client.db("proLearnDb").collection("users");
     const classesCollection = client.db("proLearnDb").collection("classes");
-
     const selectedCollection = client.db("proLearnDb").collection("selected");
 
     //jwt
@@ -199,47 +197,8 @@ async function run() {
       });
       res.send({ clientSecret: paymentIntent.client_secret })
     })
-    //payment apis
-    app.post('/payments', verifyJWT, async (req, res) => {
-      const payment = req.body;
-      try {
-        const insertResult = await paymentCollection.insertOne(payment);
-        const filter = { _id: new ObjectId(payment.selectedId) };
-        const updated = {
-          $set: {
-            availableSeats: payment.availableSeats-1
-          },
-        };
-        const updatedResult = await classesCollection.updateOne(filter, updated);
-        const query = { _id: new ObjectId(payment.chosenId) };
-        const deleteResult = await selectedCollection.deleteOne(query);
-        res.send({ insertResult, deleteResult,updatedResult });
-      } catch (error) {
-        console.error('Error occurred:', error);
-        res.status(500).send('An error occurred while processing your request.');
-      }
-    });
-    app.get('/payments', verifyJWT, async (req, res) => {
-      const email = req.query.email;
-      if (!email) {
-        res.send([]);
-      }
-      const decodedEmail = req.decoded.email;
-      if (email !== decodedEmail) {
-        return res.status(403).send({ error: true, message: 'forbidden access' })
-      }
-      const query = { email: email };
-      const result = await paymentCollection.find(query).toArray();
-      res.send(result);
-    });
-    app.get('/popular', async (req, res) => {
-      const result = await paymentCollection.find().toArray();
-      res.send(result);
-    });
 
-    /*
-
-    */
+    
     //user apis
     app.get('/users', verifyJWT, verifyAdmin, async (req, res) => {
       const result = await usersCollection.find().toArray();
